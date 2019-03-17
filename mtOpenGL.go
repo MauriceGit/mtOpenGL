@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -69,6 +69,7 @@ func NewProgram(vertexShaderName, geometryShaderName, tessControlShaderName, tes
 	}
 	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
 	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		return 0, err
 	}
 

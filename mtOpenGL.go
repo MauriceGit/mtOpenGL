@@ -8,12 +8,20 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-const ()
+type MeshBuffer struct {
+	// Important geometry attributes
+	ArrayBuffer  uint32
+	VertexBuffer uint32
+	VertexCount  int32
+	IndexBuffer  uint32
+	IndexCount   int32
+}
 
 type ImageTexture struct {
 	TextureHandle uint32
@@ -300,4 +308,78 @@ func CreateFbo(colorTex, depthTex *uint32, width, height int32, multisampling bo
 	}
 
 	return CreateFboWithExistingTextures(colorTex, depthTex, texType)
+}
+
+func GenerateBufferFromTriangles2D(bufferObject *MeshBuffer, points []mgl32.Vec2) {
+
+	if len(points) < 3 {
+		return
+	}
+
+	var tmpM mgl32.Vec2
+	stride := int32(unsafe.Sizeof(tmpM))
+
+	gl.GenBuffers(1, &bufferObject.ArrayBuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, bufferObject.ArrayBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, int(stride)*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+
+	gl.GenVertexArrays(1, &bufferObject.VertexBuffer)
+	gl.BindVertexArray(bufferObject.VertexBuffer)
+
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(0))
+
+	bufferObject.VertexCount = int32(len(points))
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+}
+
+func GenerateBufferFromLines2D(bufferObject *MeshBuffer, points []mgl32.Vec2, indices []uint32) {
+
+	if len(points) < 2 || len(indices) < 2 {
+		return
+	}
+
+	var tmpM mgl32.Vec2
+	stride := int32(unsafe.Sizeof(tmpM))
+	var ui uint32
+	uiStride := int(unsafe.Sizeof(ui))
+
+	gl.GenBuffers(1, &bufferObject.ArrayBuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, bufferObject.ArrayBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, int(stride)*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+
+	gl.GenVertexArrays(1, &bufferObject.VertexBuffer)
+	gl.BindVertexArray(bufferObject.VertexBuffer)
+
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(0))
+
+	bufferObject.VertexCount = int32(len(points))
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+
+	gl.GenBuffers(1, &bufferObject.IndexBuffer)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferObject.IndexBuffer)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, uiStride*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+	bufferObject.IndexCount = int32(len(indices))
+
+}
+
+func FreeGLBuffer(buffer *MeshBuffer) {
+	if buffer.VertexCount > 0 {
+		gl.DeleteBuffers(1, &buffer.ArrayBuffer)
+		gl.DeleteVertexArrays(1, &buffer.VertexBuffer)
+		buffer.VertexCount = 0
+		buffer.ArrayBuffer = 0
+		buffer.VertexBuffer = 0
+	}
+
+	if buffer.IndexCount > 0 {
+		// Does it work, if the buffer was never used?
+		gl.DeleteBuffers(1, &buffer.IndexBuffer)
+		buffer.VertexCount = 0
+		buffer.IndexBuffer = 0
+	}
 }
